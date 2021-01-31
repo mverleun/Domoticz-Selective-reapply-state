@@ -61,7 +61,7 @@ end
 commandArray = {}
 
 -- Run every 5 minutes
-if (time.min % 1) == 0 then
+if (time.min % 5) == 0 then
     reApplyState()
 end
 
