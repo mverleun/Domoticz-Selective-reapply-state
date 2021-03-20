@@ -1,6 +1,8 @@
-# Domoticz-Selective-reapply-state
+# Domoticz reapply state
 
-Selective reapply a state in Domoticz, useful for 443.92 Mhz devices and others without feedback
+Selective reapply a state in Domoticz, useful for 443.92 Mhz devices and others without feedback.
+
+With many 443.92 Mhz devices, RF-Link or RFXCom controlled, such as Klik-Aan-Klik-Uit (kika), Home Easy EU, Unitec, Silvercrest and many more it could be necessary to resend the desired state periodically. This because the control mechanism is a so called open loop instead of a closed loop.
 
 ## Closed loop vs open loop
 
@@ -20,10 +22,9 @@ Limit retransmissions as much as possible to avoid interference with other signa
 This script will call the Domoticz API to obtain more information then is available within the standaard LUA tables that are present.
 With an if-statement devices are selected as selective as possible for which retransmission is desirable.
 
-
 ## Timed script
 
 The LUA script is a timed script in Domoticz. This means that the script is executed every minute. 
-It is possible to skip the processing of all the commands by modifying the first if-statement.
+If the state of a device changed within a certain interval this script will not re-apply the same state until that interval has expired.
 
-
+But even when the interval has expired the device has to wait until the next run before the state is re-applied.
