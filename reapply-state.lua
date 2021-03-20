@@ -9,15 +9,44 @@
 --
 -- Heavily inspired by: https://www.domoticz.com/forum/viewtopic.php?p=115795#p115795
 
+-- The state will only be reapplied if the last change was more than 1 minute ago to prevent raceconditions with timer operated switches.
 --
 --
-time = os.date("*t")
-weekday = os.date("%A")
-minutes = time.min + time.hour * 60
 
 
-
-local function reApplyState()
+--- Function to log messages
+--- This allows to turn these messages on and off in a central location
+--- Input: message to display
+function logMessage(message)
+    print(message)
+end
+---
+--- Function to return how long a device is in a state
+--- Input: DeviceName
+--- Returns: Number of seconds that device is in its current state
+function timeInState(device)
+    local t1=os.time()
+    local s = otherdevices_lastupdate[device]
+    
+    local year = string.sub(s, 1, 4)
+    local month = string.sub(s, 6, 7)
+    local day = string.sub(s, 9, 10)
+    local hour = string.sub(s, 12, 13)
+    local minutes = string.sub(s, 15, 16)
+    local seconds = string.sub(s, 18, 19)
+    local t2 = os.time{year=year, month=month, day=day, hour=hour, min=minutes, sec=seconds}
+    local difference = (os.difftime (t1, t2))
+    return difference
+end    
+    
+    
+--- Function to reapply the state of a device again, it does not change the state.
+--- The state is only reapplied if a device is in a state for a certain amount of time.
+--- Input: minimum number of seconds a device has to be in a state.
+--- Returns: None, it modifies the global variable commandArray
+function reApplyState(minTimeInState)
+    logMessage("Inside reApplyState")
+    
     local sUrl = 'localhost' -- IP address of Domoticz
     local sPort = '8080'     -- port number of Domoticz
     
@@ -44,15 +73,24 @@ local function reApplyState()
     -- Loop over results 
     for k,v in pairs(deviceList['result']) do
         -- Only reapply for certain devices:
-        if (v['HardwareName'] == "RF Link" or v['HardwareName'] == "RFXtrx") 
+        if v['HardwareName'] == "RF Link"
             and (v['HardwareDisabled'] == false) -- Skip if a device is disabled
             and (v['Type'] == "Light/Switch")
             and (v['SwitchType'] == 'On/Off')
-            and (v['Protected'] == 'false' )
+            and (
+                (v['Name'] == 'E....n')
+            or  (v['Name'] == 'S....r')
+            or  (v['Name'] == 'Lamp K....')
+            or  (v['Name'] == 'Lamp B....')
+            )
+        --    and (v['Protected'] == 'false' )
         then
-          -- print("Reappling state " .. v['Status'] .. " to " .. v['Name'])
-          -- Add command to commandArray
-          commandArray[v['Name']] = v['Status']
+            if timeInState(v['Name']) >= minTimeInState 
+            then 
+                logMessage(v['Name'] .. " " .. timeInState(v['Name']))
+                logMessage("Reappling state " .. v['Status'] .. " to " .. v['Name'])
+                commandArray[v['Name']] = v['Status']
+            end
         end
     end 
 end
@@ -60,9 +98,8 @@ end
 -- Start with an empty array of commands
 commandArray = {}
 
--- Run every 5 minutes
-if (time.min % 5) == 0 then
-    reApplyState()
-end
+-- Do not use low values when calling reApplyState. This script is timer based and runs once a minute.
+-- A low value might cause race conditions again if there is a delay handling timers.
+reApplyState(60)
 
 return commandArray
